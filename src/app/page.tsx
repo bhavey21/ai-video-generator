@@ -42,7 +42,7 @@ export default function Home() {
   }, []);
 
   const getPresenters = async () => {
-    const response = await axios.get("/api/presenters");
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/presenters`);
     const list: Presenter[] = response.data.presenters ?? [];
     setPresenters(list);
 
@@ -110,7 +110,7 @@ export default function Home() {
   setGenerating(true);
   setError(null); // clear previous errors
   try {
-    const response = await axios.post('/api/generate-video', {
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/generate-video`, {
       selected,
       inputText,
       authToken
@@ -149,7 +149,7 @@ export default function Home() {
   }
 
   const fetchClipApi = async (clip_id: string) => {
-    const response = await axios.get('/api/generate-video', {
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/generate-video`, {
       params: {
         clip_id
       }
