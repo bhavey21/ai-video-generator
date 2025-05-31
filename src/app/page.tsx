@@ -1,7 +1,7 @@
 "use client";
 import axios from "axios";
 import Image from "next/image";
-import Select, { SingleValue } from "react-select";
+import Select, { OptionProps, SingleValue } from "react-select";
 import { useEffect, useState } from "react";
 
 type Presenter = {
@@ -19,8 +19,12 @@ type OptionType = {
   data: Presenter;
 };
 
+interface Clip {
+  id: string,
+  result_url: string,
+}
 export default function Home() {
-  const [presenters, setPresenters] = useState<Presenter[]>([]);
+  //const [presenters, setPresenters] = useState<Presenter[]>([]);
   const [options, setOptions] = useState<OptionType[]>([]);
   const [selected, setSelected] = useState<OptionType | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -29,7 +33,7 @@ export default function Home() {
   const [inputText, setInputText] = useState("");
   const [generating, setGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [clip, setClip] = useState<any>(undefined);
+  const [clip, setClip] = useState<Clip | undefined>(undefined);
   const charLimit = 200;
 
 
@@ -44,7 +48,7 @@ export default function Home() {
   const getPresenters = async () => {
     const response = await axios.get(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/presenters`);
     const list: Presenter[] = response.data.presenters ?? [];
-    setPresenters(list);
+    //setPresenters(list);
 
     const formatted = list.map((p) => ({
       value: p.presenter_id,
@@ -67,15 +71,10 @@ export default function Home() {
     </div>
   );
 
-  const customOption = ({
-    data,
-    innerRef,
-    innerProps,
-  }: {
-    data: OptionType;
-    innerRef: any;
-    innerProps: any;
-  }) => (
+  const customOption = (props: OptionProps<OptionType>) => {
+  const { data, innerRef, innerProps } = props;
+
+  return (
     <div
       ref={innerRef}
       {...innerProps}
@@ -94,6 +93,7 @@ export default function Home() {
       </div>
     </div>
   );
+};
 
   const handleChange = (option: SingleValue<OptionType>) => {
     setSelected(option);
@@ -123,9 +123,15 @@ export default function Home() {
 
     await fetchGeneratedClip(clipId);
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+  if (axios.isAxiosError(err)) {
     setError(err.response?.data?.error || err.message || "Something went wrong");
-  } finally {
+  } else if (err instanceof Error) {
+    setError(err.message);
+  } else {
+    setError("Something went wrong");
+  }
+} finally {
     setGenerating(false);
   }
 };
@@ -187,7 +193,7 @@ export default function Home() {
                   className="rounded-md shadow"
                   preload="metadata"
                 >
-                  Sorry, your browser doesn't support embedded videos.
+                  Sorry, your browser doesn&apos;t support embedded videos.
                 </video>
               </div>
             )}
@@ -256,7 +262,7 @@ export default function Home() {
       className="rounded-md shadow"
       preload="metadata"
     >
-      Sorry, your browser doesn't support embedded videos.
+      Sorry, your browser doesn&apos;t support embedded videos.
     </video>
 
     {/* Video text below the video */}

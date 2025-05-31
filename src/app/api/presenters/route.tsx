@@ -1,8 +1,8 @@
 import axios from "axios";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 
     const presenters = await axios.get(`${process.env.DID_API_URL}/clips/presenters`, {
         auth: {
