@@ -1,7 +1,7 @@
 "use client";
 import axios from "axios";
 import Image from "next/image";
-import Select, { OptionProps, SingleValue } from "react-select";
+import Select, { ActionMeta, MultiValue, OptionProps, SingleValue } from "react-select";
 import { useEffect, useState } from "react";
 
 type Presenter = {
@@ -72,32 +72,39 @@ export default function Home() {
   );
 
   const customOption = (props: OptionProps<OptionType>) => {
-  const { data, innerRef, innerProps } = props;
+    const { data, innerRef, innerProps } = props;
 
-  return (
-    <div
-      ref={innerRef}
-      {...innerProps}
-      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
-    >
-      <Image
-        src={data.data.thumbnail_url}
-        alt={data.label}
-        width={30}
-        height={30}
-        className="rounded-full"
-      />
-      <div>
-        <div className="font-medium text-gray-900">{data.data.name}</div>
-        <div className="text-sm text-gray-500">{data.data.gender}</div>
+    return (
+      <div
+        ref={innerRef}
+        {...innerProps}
+        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
+      >
+        <Image
+          src={data.data.thumbnail_url}
+          alt={data.label}
+          width={30}
+          height={30}
+          className="rounded-full"
+        />
+        <div>
+          <div className="font-medium text-gray-900">{data.data.name}</div>
+          <div className="text-sm text-gray-500">{data.data.gender}</div>
+        </div>
       </div>
-    </div>
-  );
-};
-
-  const handleChange = (option: SingleValue<OptionType>) => {
-    setSelected(option);
+    );
   };
+
+  const handleChange = (
+    newValue: SingleValue<OptionType> | MultiValue<OptionType>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _actionMeta: ActionMeta<OptionType>
+  ) => {
+    if (!Array.isArray(newValue)) {
+      setSelected(newValue as OptionType | null);
+    }
+  };
+
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -107,34 +114,34 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-  setGenerating(true);
-  setError(null); // clear previous errors
-  try {
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/generate-video`, {
-      selected,
-      inputText,
-      authToken
-    });
+    setGenerating(true);
+    setError(null); // clear previous errors
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/generate-video`, {
+        selected,
+        inputText,
+        authToken
+      });
 
-    const clipId = response?.data?.videoResponse?.id;
-    if (!clipId) {
-      throw new Error("No clip ID returned from API");
+      const clipId = response?.data?.videoResponse?.id;
+      if (!clipId) {
+        throw new Error("No clip ID returned from API");
+      }
+
+      await fetchGeneratedClip(clipId);
+
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error || err.message || "Something went wrong");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Something went wrong");
+      }
+    } finally {
+      setGenerating(false);
     }
-
-    await fetchGeneratedClip(clipId);
-
-  } catch (err: unknown) {
-  if (axios.isAxiosError(err)) {
-    setError(err.response?.data?.error || err.message || "Something went wrong");
-  } else if (err instanceof Error) {
-    setError(err.message);
-  } else {
-    setError("Something went wrong");
-  }
-} finally {
-    setGenerating(false);
-  }
-};
+  };
 
   const handleBack = async () => {
     setClip(undefined);
@@ -148,7 +155,7 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 10000));
       response = await fetchClipApi(clip_id);
     } while (!['rejected', 'error', 'done'].includes(response?.clip?.status));
-    if(response?.clip?.status) {
+    if (response?.clip?.status) {
       setClip(response?.clip);
     }
     setGenerating(false);
@@ -172,129 +179,126 @@ export default function Home() {
           {!clip && (
             <>
               <div className="flex items-start gap-8">
-            <div className="flex-shrink-0 w-1/3">
-              <Select
-                options={options}
-                value={selected}
-                onChange={handleChange}
-                getOptionLabel={(e) => e.label}
-                components={{ SingleValue: customSingleValue, Option: customOption }}
-                placeholder="Select a presenter"
-              />
-            </div>
+                <div className="flex-shrink-0 w-1/3">
+                  <Select
+                    options={options}
+                    value={selected}
+                    onChange={handleChange}
+                    getOptionLabel={(e) => e.label}
+                    components={{ SingleValue: customSingleValue, Option: customOption }}
+                    placeholder="Select a presenter"
+                  />
+                </div>
 
-            {selected && (
-              <div className="flex-grow w-2/3">
-                <video
-                  key={selected.value}
-                  src={selected.data.talking_preview_url}
-                  controls
-                  width="100%"
-                  className="rounded-md shadow"
-                  preload="metadata"
-                >
-                  Sorry, your browser doesn&apos;t support embedded videos.
-                </video>
-              </div>
-            )}
-          </div>
-
-          {selected && (
-            <>
-              <textarea
-                className="mt-4 w-full p-3 border rounded-md resize-y"
-                rows={4}
-                placeholder="Enter text for the AI model to speak..."
-                value={inputText}
-                onChange={handleTextChange}
-              />
-              <div className="text-sm text-gray-500 mt-1 text-right">
-                {inputText.length} / {charLimit} characters
+                {selected && (
+                  <div className="flex-grow w-2/3">
+                    <video
+                      key={selected.value}
+                      src={selected.data.talking_preview_url}
+                      controls
+                      width="100%"
+                      className="rounded-md shadow"
+                      preload="metadata"
+                    >
+                      Sorry, your browser doesn&apos;t support embedded videos.
+                    </video>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 flex items-center gap-4">
-                <input
-                  type="password"
-                  placeholder="Enter auth token"
-                  value={authToken}
-                  onChange={(e) => setAuthToken(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-md w-1/3"
-                />
+              {selected && (
+                <>
+                  <textarea
+                    className="mt-4 w-full p-3 border rounded-md resize-y"
+                    rows={4}
+                    placeholder="Enter text for the AI model to speak..."
+                    value={inputText}
+                    onChange={handleTextChange}
+                  />
+                  <div className="text-sm text-gray-500 mt-1 text-right">
+                    {inputText.length} / {charLimit} characters
+                  </div>
 
-                <button
-                  onClick={handleSubmit}
-                  disabled={!inputText.trim() || generating}
-                  className={`px-4 py-2 w-2/3 rounded-md text-white font-medium flex items-center justify-center gap-2
+                  <div className="mt-4 flex items-center gap-4">
+                    <input
+                      type="password"
+                      placeholder="Enter auth token"
+                      value={authToken}
+                      onChange={(e) => setAuthToken(e.target.value)}
+                      className="flex-1 px-3 py-2 border rounded-md w-1/3"
+                    />
+
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!inputText.trim() || generating}
+                      className={`px-4 py-2 w-2/3 rounded-md text-white font-medium flex items-center justify-center gap-2
       ${!inputText.trim() || generating
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"}
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700"}
     `}
-                >
-                  {generating ? (
-                    <>
-                      <span className="loader border-white"></span>
-                      Generating...
-                    </>
-                  ) : (
-                    "Submit"
-                  )}
-                </button>
-              </div>
+                    >
+                      {generating ? (
+                        <>
+                          <span className="loader border-white"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Submit"
+                      )}
+                    </button>
+                  </div>
 
-            </>
-          )}
+                </>
+              )}
             </>
           )}
 
           {clip && (
-  <div className="flex-grow w-2/3 flex flex-col gap-4">
-    <button
-      onClick={handleBack}
-      className="self-start px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-    >
-      ← Back
-    </button>
-    <video
-      key={clip.id}
-      src={clip.result_url}
-      controls
-      width="100%"
-      className="rounded-md shadow"
-      preload="metadata"
-    >
-      Sorry, your browser doesn&apos;t support embedded videos.
-    </video>
+            <div className="flex-grow w-2/3 flex flex-col gap-4">
+              <button
+                onClick={handleBack}
+                className="self-start px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                ← Back
+              </button>
+              <video
+                key={clip.id}
+                src={clip.result_url}
+                controls
+                width="100%"
+                className="rounded-md shadow"
+                preload="metadata"
+              >
+                Sorry, your browser doesn&apos;t support embedded videos.
+              </video>
 
-    {/* Video text below the video */}
-    <div className="p-3 bg-gray-100 rounded-md text-sm text-gray-700 whitespace-pre-wrap">
-      {inputText}
-    </div>
+              {/* Video text below the video */}
+              <div className="p-3 bg-gray-100 rounded-md text-sm text-gray-700 whitespace-pre-wrap">
+                {inputText}
+              </div>
 
-    <div className="p-3 rounded-md text-sm text-blue-700">
-  Video URL:{" "}
-  <a
-    href={clip.result_url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="underline hover:text-blue-900"
-  >
-    {clip.result_url}
-  </a>
-</div>
+              <div className="p-3 rounded-md text-sm text-blue-700">
+                Video URL:{" "}
+                <a
+                  href={clip.result_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-900"
+                >
+                  {clip.result_url}
+                </a>
+              </div>
 
-    
-  </div>
-)}
-{error && (
-  <div className="mt-4 p-3 text-red-700 bg-red-100 rounded">
-    {error}
-  </div>
-)}
+
+            </div>
+          )}
+          {error && (
+            <div className="mt-4 p-3 text-red-700 bg-red-100 rounded">
+              {error}
+            </div>
+          )}
         </>
       )}
     </div>
   );
-
-
-
 }
